@@ -33,6 +33,12 @@ export const AboutCommand = () => {
             <span className="text-emerald-500 uppercase tracking-widest text-[10px]">Email:</span> 
             <a href={`mailto:${RESUME_DATA.contact.email}`} className="text-sky-400 hover:text-sky-300 transition-colors">{RESUME_DATA.contact.email}</a>
           </div>
+          {RESUME_DATA.contact.phone && (
+            <div className="flex gap-2 items-center">
+              <span className="text-emerald-500 uppercase tracking-widest text-[10px]">Phone:</span> 
+              <a href={`tel:${RESUME_DATA.contact.phone}`} className="text-sky-400 hover:text-sky-300 transition-colors">{RESUME_DATA.contact.phone}</a>
+            </div>
+          )}
           <div className="flex gap-2 items-center">
             <span className="text-emerald-500 uppercase tracking-widest text-[10px]">Network:</span> 
             <a href={`https://${RESUME_DATA.contact.linkedin}`} target="_blank" rel="noreferrer" className="text-sky-400 hover:text-sky-300 transition-colors">LinkedIn</a>

@@ -4,6 +4,7 @@ export const RESUME_DATA = {
   location: "Sumaré, Sao Paulo, Brasil",
   contact: {
     email: "simoes.fernando90@gmail.com",
+    phone: process.env.NEXT_PUBLIC_PHONE,
     linkedin: "linkedin.com/in/fernando-simoes",
   },
   summary: "Senior Software Engineer with 10+ years of experience building and scaling complex web platforms. Strong background in frontend architecture with React and TypeScript, combined with hands-on experience in backend development, observability, and platform reliability. Comfortable operating across product, platform, and production environments.",
