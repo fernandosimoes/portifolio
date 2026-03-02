@@ -1,65 +1,151 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import { useState, useRef, useEffect, ReactNode } from "react";
+import { TerminalHeader } from "@/components/portfolio/terminal/TerminalHeader";
+import { 
+  AboutCommand, 
+  HelpCommand, 
+  SkillsCommand, 
+  NotFoundCommand 
+} from "@/components/portfolio/commands/BasicCommands";
+import { ProjectsCommand } from "@/components/portfolio/commands/ProjectsCommand";
+import { JobsCommand } from "@/components/portfolio/commands/JobsCommand";
+
+type HistoryItem = {
+  id: string;
+  type: "command" | "output";
+  content?: ReactNode;
+  cmd?: string;
+};
+
+export default function Portfolio() {
+  const [history, setHistory] = useState<HistoryItem[]>([]);
+  const [input, setInput] = useState("");
+  const bottomRef = useRef<HTMLDivElement>(null);
+  const isInitialized = useRef(false);
+
+  // Accordion state managed centrally so expanding items works across commands
+  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
+
+  const toggleExpand = (id: string) => {
+    setExpandedItems(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  // Initialize terminal
+  useEffect(() => {
+    if (!isInitialized.current) {
+      isInitialized.current = true;
+      setHistory([
+        { id: "init-cmd", type: "command", cmd: "whoami" },
+        { id: "init-out", type: "output", cmd: "whoami" }
+      ]);
+    }
+  }, []);
+
+  // Scroll to bottom of terminal when history changes
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [history, expandedItems]);
+
+  const handleCommand = (cmd: string, addToHistory = true) => {
+    const trimmedCmd = cmd.trim();
+    if (!trimmedCmd) return;
+
+    if (trimmedCmd === "/clear") {
+      setHistory([]);
+      setInput("");
+      return;
+    }
+
+    if (addToHistory) {
+      setHistory(prev => [
+        ...prev, 
+        { id: Date.now().toString() + "-cmd", type: "command", cmd: trimmedCmd },
+        { id: Date.now().toString() + "-out", type: "output", cmd: trimmedCmd }
+      ]);
+      setInput("");
+    }
+  };
+
+  const renderCommandOutput = (cmd: string): ReactNode => {
+    const trimmedCmd = cmd.trim();
+    
+    switch (trimmedCmd) {
+      case "whoami":
+      case "/about":
+        return <AboutCommand />;
+      case "/help":
+        return <HelpCommand onCommand={handleCommand} />;
+      case "/projects":
+        return <ProjectsCommand expandedItems={expandedItems} toggleExpand={toggleExpand} />;
+      case "/jobs":
+        return <JobsCommand expandedItems={expandedItems} toggleExpand={toggleExpand} />;
+      case "/skills":
+        return <SkillsCommand />;
+      default:
+        return <NotFoundCommand cmd={trimmedCmd} onCommand={handleCommand} />;
+    }
+  };
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
+    <div className="h-screen bg-stone-950 text-stone-400 font-mono flex flex-col overflow-hidden selection:bg-emerald-500 selection:text-stone-950 relative">
+      <TerminalHeader onCommand={handleCommand} />
+
+      {/* Main Terminal Area */}
+      <div className="flex-1 overflow-y-auto w-full flex flex-col px-4 md:px-8 bg-stone-950 custom-scrollbar">
+        
+        {/* Terminal History */}
+        <div className="flex-1 py-8 flex flex-col w-full max-w-5xl mx-auto">
+          {history.map((item, idx) => (
+            <div key={item.id} className={`${idx !== 0 && item.type === "command" ? "mt-12" : "mb-2"} flex flex-col`}>
+              {item.type === "command" ? (
+                <div className="flex items-center text-base mb-2">
+                  <span className="text-fuchsia-500 font-bold shrink-0">➜</span> 
+                  <span className="text-sky-500 ml-2 shrink-0">~</span> 
+                  <span className="text-stone-100 ml-3 font-bold tracking-wide">{item.cmd || item.content}</span>
+                </div>
+              ) : (
+                <div className="pl-0 sm:pl-8 text-sm md:text-base w-full">
+                  {item.cmd ? renderCommandOutput(item.cmd) : item.content}
+                </div>
+              )}
+            </div>
+          ))}
+
+          {/* Prompt Input */}
+          <div className="flex flex-col sm:flex-row sm:items-center mt-8 pt-4 pb-12 w-full max-w-3xl">
+            <div className="flex items-center mb-2 sm:mb-0">
+               <span className="text-fuchsia-500 font-bold shrink-0">➜</span> 
+               <span className="text-sky-500 ml-2 shrink-0">~</span>
+            </div>
+            <form 
+              className="sm:ml-3 flex-1 w-full relative" 
+              onSubmit={(e) => { e.preventDefault(); handleCommand(input); }}
             >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+              <input
+                type="text"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                className="w-full bg-transparent outline-none text-stone-100 placeholder-stone-700 caret-emerald-500 font-bold tracking-wide text-base pl-8 sm:pl-0"
+                autoFocus
+                spellCheck="false"
+                autoComplete="off"
+                placeholder="Ex: /help"
+              />
+            </form>
+          </div>
+          
+          <div ref={bottomRef} className="h-8"></div>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+      </div>
     </div>
   );
 }
