@@ -10,6 +10,7 @@ import {
 } from "@/components/portfolio/commands/BasicCommands";
 import { ProjectsCommand } from "@/components/portfolio/commands/ProjectsCommand";
 import { JobsCommand } from "@/components/portfolio/commands/JobsCommand";
+import { RESUME_DATA } from "@/data/resume";
 
 type HistoryItem = {
   id: string;
@@ -25,10 +26,15 @@ export default function Portfolio() {
   const isInitialized = useRef(false);
 
   // Accordion state managed centrally so expanding items works across commands
-  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
+  const [collapsedItems, setCollapsedItems] = useState<Set<string>>(() => {
+    const initial = new Set<string>();
+    RESUME_DATA.projects.forEach((_, idx) => { if (idx > 0) initial.add(`proj-/projects-${idx}`); });
+    RESUME_DATA.experience.forEach((_, idx) => { if (idx > 0) initial.add(`job-/jobs-${idx}`); });
+    return initial;
+  });
 
-  const toggleExpand = (id: string) => {
-    setExpandedItems(prev => {
+  const toggleCollapse = (id: string) => {
+    setCollapsedItems(prev => {
       const next = new Set(prev);
       if (next.has(id)) {
         next.delete(id);
@@ -53,7 +59,7 @@ export default function Portfolio() {
   // Scroll to bottom of terminal when history changes
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [history, expandedItems]);
+  }, [history, collapsedItems]);
 
   const handleCommand = (cmd: string, addToHistory = true) => {
     const trimmedCmd = cmd.trim();
@@ -85,9 +91,9 @@ export default function Portfolio() {
       case "/help":
         return <HelpCommand onCommand={handleCommand} />;
       case "/projects":
-        return <ProjectsCommand expandedItems={expandedItems} toggleExpand={toggleExpand} />;
+        return <ProjectsCommand collapsedItems={collapsedItems} toggleCollapse={toggleCollapse} />;
       case "/jobs":
-        return <JobsCommand expandedItems={expandedItems} toggleExpand={toggleExpand} />;
+        return <JobsCommand collapsedItems={collapsedItems} toggleCollapse={toggleCollapse} />;
       case "/skills":
         return <SkillsCommand />;
       default:

@@ -3,11 +3,11 @@ import { AccordionItem } from "../ui/AccordionItem";
 import { ExternalLink } from "lucide-react";
 
 export const ProjectsCommand = ({ 
-  expandedItems, 
-  toggleExpand 
+  collapsedItems, 
+  toggleCollapse 
 }: { 
-  expandedItems: Set<string>; 
-  toggleExpand: (id: string) => void;
+  collapsedItems: Set<string>; 
+  toggleCollapse: (id: string) => void;
 }) => {
   return (
     <div className="mt-4 w-full max-w-5xl">
@@ -24,8 +24,8 @@ export const ProjectsCommand = ({
               id={projId} 
               title={p.name} 
               status={p.status}
-              isExpanded={expandedItems.has(projId)}
-              onToggle={() => toggleExpand(projId)}
+              isExpanded={!collapsedItems.has(projId)}
+              onToggle={() => toggleCollapse(projId)}
             >
               <div className="text-stone-300 leading-relaxed mb-6">
                 {p.description}

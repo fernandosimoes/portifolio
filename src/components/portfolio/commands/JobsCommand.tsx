@@ -2,11 +2,11 @@ import { RESUME_DATA } from "@/data/resume";
 import { AccordionItem } from "../ui/AccordionItem";
 
 export const JobsCommand = ({ 
-  expandedItems, 
-  toggleExpand 
+  collapsedItems, 
+  toggleCollapse 
 }: { 
-  expandedItems: Set<string>; 
-  toggleExpand: (id: string) => void;
+  collapsedItems: Set<string>; 
+  toggleCollapse: (id: string) => void;
 }) => {
   return (
     <div className="mt-4 w-full max-w-5xl">
@@ -24,8 +24,8 @@ export const JobsCommand = ({
               title={job.company} 
               subtitle={job.role} 
               meta={job.period}
-              isExpanded={expandedItems.has(jobId)}
-              onToggle={() => toggleExpand(jobId)}
+              isExpanded={!collapsedItems.has(jobId)}
+              onToggle={() => toggleCollapse(jobId)}
             >
               <div className="flex flex-wrap gap-4 text-xs text-stone-500 font-bold bg-stone-900 inline-block px-3 py-1.5 border border-stone-800 mb-6">
                 <span>{job.location}</span>
