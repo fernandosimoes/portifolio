@@ -15,16 +15,16 @@ export const TerminalHeader = ({ onCommand }: TerminalHeaderProps) => {
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
-         <button onClick={() => onCommand("/about")} className="px-3 h-8 bg-stone-900 hover:bg-stone-800 border border-stone-800 text-xs font-bold text-stone-300 transition-colors uppercase tracking-wider">
+         <button onClick={() => onCommand("/about")} className="px-3 h-8 bg-stone-900 hover:bg-stone-800 border border-stone-800 text-xs font-bold text-stone-300 transition-colors uppercase tracking-wider cursor-pointer">
            Profile
          </button>
-         <button onClick={() => onCommand("/jobs")} className="px-3 h-8 bg-stone-900 hover:bg-stone-800 border border-stone-800 text-xs font-bold text-stone-300 transition-colors uppercase tracking-wider">
+         <button onClick={() => onCommand("/jobs")} className="px-3 h-8 bg-stone-900 hover:bg-stone-800 border border-stone-800 text-xs font-bold text-stone-300 transition-colors uppercase tracking-wider cursor-pointer">
            Experience
          </button>
-         <button onClick={() => onCommand("/projects")} className="px-3 h-8 bg-stone-900 hover:bg-stone-800 border border-stone-800 text-xs font-bold text-stone-300 transition-colors uppercase tracking-wider">
+         <button onClick={() => onCommand("/projects")} className="px-3 h-8 bg-stone-900 hover:bg-stone-800 border border-stone-800 text-xs font-bold text-stone-300 transition-colors uppercase tracking-wider cursor-pointer">
            Projects
          </button>
-         <button onClick={() => onCommand("/skills")} className="px-3 h-8 bg-stone-900 hover:bg-stone-800 border border-stone-800 text-xs font-bold text-stone-300 transition-colors uppercase tracking-wider hidden sm:block">
+         <button onClick={() => onCommand("/skills")} className="px-3 h-8 bg-stone-900 hover:bg-stone-800 border border-stone-800 text-xs font-bold text-stone-300 transition-colors uppercase tracking-wider hidden sm:block cursor-pointer">
            Stack
          </button>
       </div>
