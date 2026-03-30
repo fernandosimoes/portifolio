@@ -1,5 +1,4 @@
 import { RESUME_DATA } from "@/data/resume";
-import { ReactNode } from "react";
 
 const ClickableCmd = ({ cmdText, label, onCommand }: { cmdText: string, label?: string, onCommand: (cmd: string) => void }) => (
   <span 
@@ -58,6 +57,7 @@ export const HelpCommand = ({ onCommand }: { onCommand: (cmd: string) => void })
         <div><ClickableCmd cmdText="/projects" onCommand={onCommand} /> - Shipped Codebases</div>
         <div><ClickableCmd cmdText="/jobs" onCommand={onCommand} /> - Career History</div>
         <div><ClickableCmd cmdText="/skills" onCommand={onCommand} /> - Tech Stack</div>
+        <div><ClickableCmd cmdText="/chat" onCommand={onCommand} /> - AI Assistant</div>
         <div><ClickableCmd cmdText="/clear" onCommand={onCommand} /> - Clear Terminal</div>
       </div>
     </div>
