@@ -1,6 +1,6 @@
 # Developer Portfolio — Claude Code Guidelines
 
-Last updated: 2026-03-28 | Constitution: v1.0.0
+Last updated: 2026-03-30 | Constitution: v1.0.0
 
 > This file is the authoritative runtime guide for Claude Code on this project.
 > It mirrors `.specify/memory/constitution.md`. When both conflict, the constitution wins.
@@ -125,7 +125,7 @@ Every commit or PR touching UI MUST pass all of these:
 
 ## Recent Changes
 
-- `001-ai-chat-mode`: Added AI Chat mode — Vercel AI SDK + Gemini 2.0 Flash, Generative UI components, mode toggle with Framer Motion, `zod`. Removed `@google/genai`.
+- `001-ai-chat-mode`: Added AI Chat as a terminal command (`/chat`) — Vercel AI SDK + Gemini 2.5 Flash, Generative UI components (ProjectCard, CareerTimeline, SkillTags, ContactCard), `convertToModelMessages`, `zod`. Removed `@google/genai` and mode toggle.
 
 <!-- MANUAL ADDITIONS START -->
 <!-- MANUAL ADDITIONS END -->
