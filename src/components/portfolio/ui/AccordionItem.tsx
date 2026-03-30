@@ -12,9 +12,10 @@ interface AccordionItemProps {
   onToggle: () => void;
 }
 
-export const AccordionItem = ({ 
-  id, 
-  title, 
+export const AccordionItem = ({
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  id: _id,
+  title,
   subtitle, 
   status,
   meta,
