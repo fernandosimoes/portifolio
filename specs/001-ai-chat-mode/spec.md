@@ -2,36 +2,38 @@
 
 **Feature Branch**: `001-ai-chat-mode`
 **Created**: 2026-03-28
-**Status**: Draft
+**Status**: Implemented (updated 2026-03-30)
 **Input**: User description: "Add an AI-powered chat mode to an existing terminal-themed portfolio."
 
 ## User Scenarios & Testing *(mandatory)*
 
-### User Story 1 — Mode Toggle: Switching Between Terminal and Chat (Priority: P1)
+### User Story 1 — /chat Command: Launching the AI Assistant from the Terminal (Priority: P1)
 
-A visitor arriving at the portfolio sees the familiar terminal interface. They notice a
-"Chat" toggle in the header and click it. The view transitions to a chat interface with a
-welcome message and suggestion chips. They can click "Terminal" at any time to go back,
-and their terminal history is exactly as they left it — no state was lost.
+A visitor using the terminal portfolio types `/chat` (or clicks the "AI Chat" header button)
+and a live chat interface appears inline below the command prompt — exactly like any other
+terminal command. The visitor can still scroll up to see previous terminal output and still
+has the terminal input at the bottom to run other commands.
 
-**Why this priority**: Without the mode switch, no part of Chat mode is reachable.
-This story is the gate that makes all other stories possible, and it is independently
-shippable as a UI-only feature with a static placeholder chat view.
+**Why this priority**: `/chat` is the entry point for all chat functionality. It is
+independently shippable as a command with a static placeholder and can be fully tested
+without any AI backend by verifying the command renders inline output.
 
-**Independent Test**: Switch to Chat mode, interact with the terminal, switch back — both
-modes retain their own state independently. This can be fully tested without any AI backend.
+**Independent Test**: Type `/chat` → inline chat interface appears with welcome message and
+suggestion chips. Type `/chat` again → a second independent interface appears. Terminal history
+is unaffected. Can be fully tested without an AI backend.
 
 **Acceptance Scenarios**:
 
-1. **Given** the visitor is in Terminal mode, **When** they click the Chat toggle in the header,
-   **Then** the chat interface replaces the terminal view and the toggle reflects the active mode.
-2. **Given** the visitor is in Chat mode, **When** they click the Terminal toggle,
-   **Then** the terminal view is restored with all previous command output intact.
-3. **Given** the visitor has typed commands in the terminal and also sent chat messages,
-   **When** they switch between modes multiple times,
-   **Then** each mode preserves its own independent history across switches.
-4. **Given** the visitor is on a mobile viewport, **When** they switch modes,
-   **Then** both views are fully functional and no content overflows the screen.
+1. **Given** the visitor types `/chat` in the terminal input, **When** they press Enter,
+   **Then** a chat interface appears inline in the terminal history below the `/chat` prompt.
+2. **Given** the "AI Chat" button is visible in the terminal header, **When** the visitor
+   clicks it, **Then** `/chat` is submitted as a terminal command with the same result.
+3. **Given** the visitor types `/help`, **When** the output renders,
+   **Then** `/chat` is listed among the available commands.
+4. **Given** the visitor launches `/chat` and interacts, **When** they scroll down,
+   **Then** the terminal input is accessible below the chat interface.
+5. **Given** the visitor is on a mobile viewport, **When** `/chat` is run,
+   **Then** the chat interface renders without horizontal overflow.
 
 ---
 
@@ -147,12 +149,12 @@ response is in Portuguese.
 
 ### Functional Requirements
 
-- **FR-001**: The portfolio header MUST provide two mutually exclusive toggle controls —
-  "Terminal" and "Chat" — allowing visitors to switch between the two modes.
-- **FR-002**: Each mode (Terminal and Chat) MUST maintain independent state; switching modes
-  MUST NOT reset or discard the history of the other mode.
-- **FR-003**: Chat mode MUST display a welcome message with 3–4 clickable suggestion chips
-  when first entered; clicking a chip MUST submit that chip's text as a user message.
+- **FR-001**: The terminal MUST recognise `/chat` as a valid command that renders a
+  `ChatInterface` component inline in the terminal history, below the command prompt.
+- **FR-002**: The terminal header MUST include an "AI Chat" button that submits the `/chat`
+  command, consistent with all other nav buttons.
+- **FR-003**: The `/chat` chat interface MUST display a welcome message with 3–4 clickable
+  suggestion chips when first launched; clicking a chip MUST submit that chip's text as a user message.
 - **FR-004**: Chat mode MUST accept natural language text input from visitors and return
   responses that are factually grounded in the data defined in `src/data/resume.ts`.
 - **FR-005**: The assistant MUST NEVER fabricate information not present in `resume.ts`;
@@ -190,15 +192,15 @@ response is in Portuguese.
   independently of the Terminal session. Not persisted across page reloads.
 - **SuggestionChip**: A pre-filled question label shown in the welcome state. Submitting it
   creates a ChatMessage as if the visitor had typed it.
-- **ModeState**: The active mode of the portfolio interface — either "terminal" or "chat".
-  Controls which view is rendered in the main area.
+- **ChatSession**: In-memory conversation state for a single `/chat` invocation. Each
+  invocation mounts a fresh `ChatInterface` with its own independent `useChat` state.
 
 ## Success Criteria *(mandatory)*
 
 ### Measurable Outcomes
 
-- **SC-001**: Visitors can switch between Terminal and Chat modes without losing history in
-  either mode, verified across at least 5 consecutive switches.
+- **SC-001**: Typing `/chat` in the terminal produces an inline chat interface; the terminal
+  history above it and the terminal input below it are both intact and functional.
 - **SC-002**: The chat assistant returns a response to any portfolio-related question
   within 5 seconds under normal network conditions.
 - **SC-003**: 100% of factual claims in assistant responses are traceable to data in

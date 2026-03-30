@@ -1,7 +1,7 @@
 # Contract: POST /api/chat
 
 **Feature**: 001-ai-chat-mode
-**Date**: 2026-03-28
+**Date**: 2026-03-28 (updated 2026-03-30)
 **Route file**: `src/app/api/chat/route.ts`
 
 ---
@@ -9,8 +9,8 @@
 ## Overview
 
 Server-side Next.js App Router route handler that receives a conversation history,
-runs it through Google Gemini 2.0 Flash via Vercel AI SDK, and streams back text
-and tool-invocation parts.
+converts it to `ModelMessage[]`, runs it through Google Gemini 2.5 Flash via Vercel AI SDK,
+and streams back text and tool parts.
 
 ---
 
@@ -21,27 +21,37 @@ and tool-invocation parts.
 
 ### Body Schema
 
+The body is the `UIMessage[]` format sent automatically by `useChat` from `@ai-sdk/react`:
+
 ```json
 {
   "messages": [
     {
       "id": "string",
       "role": "user" | "assistant",
-      "content": "string",
-      "parts": "<MessagePart[] — optional, provided by AI SDK>"
+      "parts": "<MessagePart[] — provided by AI SDK>"
     }
   ]
 }
 ```
 
-The `messages` array is the full conversation history managed by `useChat` on the client.
-The route handler MUST NOT strip history — the model needs it for context and language
-detection.
+The `messages` array is the full conversation history. The route MUST NOT strip history —
+the model needs it for context and language detection.
+
+### Server-side conversion
+
+The route converts `UIMessage[]` → `ModelMessage[]` before passing to `streamText`:
+
+```typescript
+messages: await convertToModelMessages(messages)  // from "ai"
+```
+
+This is required because `useChat` (`@ai-sdk/react` v3+) sends UIMessage format with `parts`,
+while `streamText` (`ai` v6+) expects ModelMessage format with `content`.
 
 ### Validation rules
 
 - `messages` MUST be a non-empty array.
-- Each message MUST have `role` and `content`.
 - Malformed requests MUST return `400 Bad Request`.
 
 ---
@@ -51,16 +61,16 @@ detection.
 **Content-Type**: `text/plain; charset=utf-8` (AI SDK data stream format)
 **Transfer-Encoding**: `chunked` (streaming)
 
-The response is a Vercel AI SDK data stream produced by `result.toDataStreamResponse()`.
+The response is produced by `result.toUIMessageStreamResponse()`.
 The client's `useChat` hook deserialises this automatically.
 
 ### Stream part types
 
 | Part type | When | Client rendering |
 |---|---|---|
-| `text-delta` | Model is generating a text response | Appended to `message.content` |
-| `tool-call` | Model invokes a generative UI tool | `toolInvocation.state = "call"` |
-| `tool-result` | Tool `execute()` returns resume data | `toolInvocation.state = "result"` → renders component |
+| `text-delta` | Model generating text | Appended to message text part |
+| `tool-call` | Model invokes a generative UI tool | `toolPart.state = "input-available"` → "thinking…" |
+| `tool-result` | Tool `execute()` returns resume data | `toolPart.state = "output-available"` → renders component |
 | `finish` | Stream complete | `isLoading = false` |
 | `error` | Server or model error | `error` set on `useChat` state |
 
@@ -68,34 +78,35 @@ The client's `useChat` hook deserialises this automatically.
 
 ## Tools (Generative UI)
 
-All tools are **parameterless from the model's perspective** — the model calls them
-with empty args and the `execute` function fetches data from `RESUME_DATA` directly.
-This keeps the model from having to construct data payloads and prevents hallucination.
+All tools are **parameterless from the model's perspective** — the model calls them with
+empty args and the `execute` function fetches data from `RESUME_DATA` directly.
+
+Tool definitions use `inputSchema` (AI SDK v6 field name, not `parameters`):
 
 ### `renderProjectCard`
 
-- **Description**: "Display Fernando's portfolio projects as visual cards."
-- **Parameters**: `{}` (empty Zod object)
-- **Execute returns**: `ProjectCardResult` — `{ projects: RESUME_DATA.projects }`
+- **Description**: "Display Fernando's projects as visual cards"
+- **inputSchema**: `z.object({})` (empty)
+- **Execute returns**: `{ projects: RESUME_DATA.projects }`
 
 ### `renderCareerTimeline`
 
-- **Description**: "Display Fernando's work history as a timeline."
-- **Parameters**: `{}` (empty Zod object)
-- **Execute returns**: `CareerTimelineResult` — `{ experience: RESUME_DATA.experience }`
+- **Description**: "Display Fernando's work experience as a career timeline"
+- **inputSchema**: `z.object({})` (empty)
+- **Execute returns**: `{ experience: RESUME_DATA.experience }` (mapped fields)
 
 ### `renderSkillTags`
 
-- **Description**: "Display Fernando's technical skills grouped by proficiency."
-- **Parameters**: `{}` (empty Zod object)
-- **Execute returns**: `SkillTagsResult` — `{ skills: { proficient, intermediate, knowledge } }`
+- **Description**: "Display Fernando's technical skills grouped by proficiency level"
+- **inputSchema**: `z.object({})` (empty)
+- **Execute returns**: `{ skills: { proficient, intermediate, knowledge } }`
 
 ### `renderContactCard`
 
-- **Description**: "Display Fernando's contact information."
-- **Parameters**: `{}` (empty Zod object)
-- **Execute returns**: `ContactCardResult` — `{ contact: { email, linkedin, location, availability } }`
-  - **Note**: `RESUME_DATA.contact.phone` is intentionally EXCLUDED from this result.
+- **Description**: "Display Fernando's contact information"
+- **inputSchema**: `z.object({})` (empty)
+- **Execute returns**: `{ contact: { email, linkedin, location, availability } }`
+  - **Note**: `RESUME_DATA.contact.phone` is intentionally EXCLUDED.
 
 ---
 
@@ -108,9 +119,9 @@ The system prompt MUST contain:
 1. **Identity framing**: The assistant is Fernando's AI representative, not Fernando himself.
 2. **Factual data block**: All of `RESUME_DATA` serialised as structured text.
 3. **Language instruction**: Detect language from the first user message; respond in that language; default to English.
-4. **Topic restrictions**: Never express opinions on politics, social issues, religion, or controversial topics. Redirect politely to professional topics.
-5. **Fabrication prevention**: If information is not in the data block, acknowledge honestly rather than guessing.
-6. **Tool usage guidance**: Use the Generative UI tools when the user asks about projects, experience, skills, or contact. A text reply may accompany a tool call.
+4. **Topic restrictions**: Never express opinions on politics, social issues, religion, or controversial topics.
+5. **Fabrication prevention**: If information is not in the data block, acknowledge honestly.
+6. **Mandatory tool usage rules**: Explicit trigger conditions for each tool — the model MUST call the tool (not describe data in plain text) when the user asks about projects, experience, skills, or contact.
 
 ---
 
@@ -118,19 +129,15 @@ The system prompt MUST contain:
 
 | Scenario | Response |
 |---|---|
-| `GOOGLE_GENERATIVE_AI_API_KEY` missing | `500` with message "AI service not configured" |
-| Gemini API unavailable / timeout | `503` with message "AI service temporarily unavailable" |
-| Invalid request body | `400 Bad Request` |
-| Empty `messages` array | `400 Bad Request` |
-
-All errors MUST be returned as JSON: `{ "error": "message" }`.
+| `GOOGLE_GENERATIVE_AI_API_KEY` missing | `500` with `{ "error": "AI service not configured" }` |
+| Gemini API unavailable / timeout | `503` with `{ "error": "AI service temporarily unavailable" }` |
+| Invalid or empty `messages` | `400 Bad Request` |
 
 ---
 
 ## Constraints
 
-- Maximum conversation history forwarded to the model: 20 messages (configurable in route).
-  Older messages beyond 20 are trimmed from the tail (oldest first) to control token cost.
-- `maxSteps: 2` — allows one tool call plus one final text generation per turn.
+- `maxOutputTokens: 1000` — limits response length.
 - The route is `export const runtime = "nodejs"` (not edge) to allow full Node.js APIs.
 - The route MUST NOT log or persist any message content.
+- Model: `gemini-2.5-flash` (`gemini-2.0-flash` is no longer available to new users).

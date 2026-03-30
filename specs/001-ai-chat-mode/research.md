@@ -1,24 +1,26 @@
 # Research: AI Chat Mode with Generative UI
 
 **Feature**: 001-ai-chat-mode
-**Date**: 2026-03-28
+**Date**: 2026-03-28 (updated 2026-03-30)
 
 ---
 
 ## Decision 1: AI SDK and LLM Provider
 
-**Decision**: Use Vercel AI SDK (`ai` + `@ai-sdk/google`) with Google Gemini 2.0 Flash.
+**Decision**: Use Vercel AI SDK (`ai` + `@ai-sdk/google`) with Google Gemini 2.5 Flash.
 
 **Rationale**: The existing `@google/genai` package is a lower-level Google SDK that does
 not provide streaming helpers, `useChat`, or tool-calling integrations aligned with Next.js
 App Router. The Vercel AI SDK provides:
 - `streamText` (server) + `useChat` (client) pairing with built-in streaming support
-- Tool-calling API compatible with Gemini 2.0 Flash function calling
-- `toDataStreamResponse()` for seamless Next.js Route Handler integration
-- `toolInvocations` on message objects, enabling Generative UI on the client
+- Tool-calling API compatible with Gemini function calling
+- `toUIMessageStreamResponse()` for seamless Next.js Route Handler integration
+- `message.parts` on UIMessage objects, enabling Generative UI on the client
 
-`@ai-sdk/google` exposes `google('gemini-2.0-flash')` as a drop-in model provider.
+`@ai-sdk/google` exposes `google('gemini-2.5-flash')` as a drop-in model provider.
 `GOOGLE_GENERATIVE_AI_API_KEY` is the environment variable read automatically by the package.
+
+**Note on model**: `gemini-2.0-flash` is no longer available to new users. Use `gemini-2.5-flash`.
 
 **Alternatives considered**:
 - Keep `@google/genai`: Lacks `useChat`, requires manual streaming plumbing — rejected.
@@ -29,55 +31,67 @@ App Router. The Vercel AI SDK provides:
 
 ## Decision 2: Generative UI Pattern
 
-**Decision**: Server-side tools with `toolInvocations` rendered client-side.
+**Decision**: Server-side tools with `message.parts` rendered client-side.
 
 **Rationale**: With Vercel AI SDK `streamText` + `tools`, the server defines tool schemas
-(Zod) and `execute` functions that return typed data from `resume.ts`. The streaming response
+and `execute` functions that return typed data from `resume.ts`. The streaming response
 delivers tool call + result parts to the client. The client's `useChat` hook populates
-`message.parts` with `tool-invocation` entries; the `ChatMessage` renderer switches on
-`toolName` to mount the appropriate React component (`ProjectCard`, `CareerTimeline`, etc.).
-`maxSteps: 2` allows one tool call followed by a final text response in the same turn.
+`message.parts` with tool entries; the `ChatMessage` renderer switches on the part type
+to mount the appropriate React component (`ProjectCard`, `CareerTimeline`, etc.).
+
+**Implementation notes (AI SDK v6)**:
+- Tool definitions use `inputSchema` (not `parameters`) in inline tool objects.
+- `useChat` from `@ai-sdk/react` sends `UIMessage[]` to the route; `streamText` expects
+  `ModelMessage[]`. Use `await convertToModelMessages(messages)` (from `"ai"`) to convert.
+- `toUIMessageStreamResponse()` replaces the older `toDataStreamResponse()`.
 
 **Alternatives considered**:
-- RSC streaming with `createStreamableUI` (AI SDK RSC): More complex server-client boundary,
-  requires React Server Component streaming infrastructure beyond what App Router provides
-  here — rejected in favour of the simpler data-stream pattern.
+- RSC streaming with `createStreamableUI`: More complex server-client boundary — rejected.
 - Client-side component selection from text keywords: fragile string matching — rejected.
 
 ---
 
-## Decision 3: Mode State Management
+## Decision 3: Chat as a Terminal Command (Architecture Change)
 
-**Decision**: Local `useState` in `page.tsx` — no Context or external state manager.
+**Decision**: `/chat` is a terminal command that renders `ChatInterface` inline in the
+terminal history, replacing the original "mode toggle" design.
 
-**Rationale**: Mode state (`"terminal" | "chat"`) is consumed only by `page.tsx` and
-`TerminalHeader`. Terminal history and chat messages each live in their own component
-(`page.tsx` for terminal, `useChat` for chat). No cross-cutting state sharing is needed.
-A Context or Zustand store would add indirection with zero benefit at this scale.
+**Rationale**: The original design used a `ModeState` (`"terminal" | "chat"`) with a
+header toggle and `AnimatePresence` view-swapping. During implementation it became clear
+that chat-as-a-command is a better fit for the terminal-first identity:
+- Stays fully within the established terminal mental model (commands produce output)
+- Removes the concept of "two separate pages", which felt inconsistent with the portfolio's
+  terminal theme
+- Eliminates `ModeState`, `AnimatePresence` view-swapping, and associated complexity
+- Each `/chat` invocation gets a fresh `ChatSession` (via a fresh `useChat` mount)
+- The "AI Chat" header button simply calls `onCommand("/chat")` — it is not a mode toggle
+
+**Dropped from original design**:
+- `ModeState = "terminal" | "chat"` type and `useState` in `page.tsx`
+- `AnimatePresence` mode transition animation
+- Mode props (`mode`, `onModeChange`) on `TerminalHeader`
+- Keeping `ChatInterface` mounted-but-hidden to preserve state across mode switches
 
 **Alternatives considered**:
-- React Context: Appropriate if 3+ unrelated subtrees needed the mode value — not the case.
-- URL search param (`?mode=chat`): Enables shareable links but adds router complexity and
-  is non-standard for a portfolio — deferred to future enhancement.
+- Original mode toggle: Functional but breaks terminal mental model — replaced.
+- URL-based routing (`/chat` page): Leaves the terminal entirely — rejected.
 
 ---
 
 ## Decision 4: Framer Motion Integration
 
-**Decision**: `AnimatePresence` + `motion.div` on the Terminal/Chat view swap; per-message
-`motion.div` entrance animation in the chat message list.
+**Decision**: Per-message `motion.li` entrance animation in `ChatMessage`; no view-swap animation.
 
-**Rationale**: Framer Motion 12 is already installed. `AnimatePresence` handles exit
-animations when a view unmounts (required to animate the outgoing mode). Mode transitions
-use a simple fade + slight vertical translate. Each new chat message entrance uses a
-`y: 8 → 0` + `opacity: 0 → 1` animation. `prefers-reduced-motion` is respected via
-Framer Motion's built-in `useReducedMotion` hook — when motion is reduced, duration is
-set to 0.
+**Rationale**: Framer Motion 12 is already installed. Each new chat message uses a
+`y: 8 → 0` + `opacity: 0 → 1` entrance animation. `prefers-reduced-motion` is respected
+via `useReducedMotion` — when motion is reduced, duration is set to 0.
+
+The mode-swap `AnimatePresence` animation from the original design was removed along with
+`ModeState`. There is no longer a view transition to animate.
 
 **Alternatives considered**:
-- CSS transitions only: Would work but cannot animate unmounting elements — rejected.
-- No animation: Functional but misses the polish opportunity given the library is already
-  installed — rejected.
+- CSS transitions only: Cannot animate list item entrance as cleanly — rejected.
+- No animation: Functional but misses polish opportunity — rejected.
 
 ---
 
@@ -87,51 +101,45 @@ set to 0.
 user message and respond in that language for the remainder of the session.
 
 **Rationale**: `useChat` preserves full message history in each API call, so the model
-has access to the first message on every subsequent turn and can maintain language
-consistency. No client-side language-detection library is needed, which avoids adding
-a dependency and keeps the bundle lean.
+has access to the first message on every subsequent turn. No client-side library needed.
 
 **Alternatives considered**:
-- `navigator.language` + explicit `Accept-Language` header: Detects browser locale, not
-  the language the user actually writes in — rejected as less accurate.
-- `franc` (language detection library): Adds ~30 kB; unnecessary when the model can do
-  this natively — rejected.
+- `navigator.language`: Detects browser locale, not the language the user writes in — rejected.
+- `franc` (language detection library): Adds ~30 kB; unnecessary — rejected.
 
 ---
 
 ## Decision 6: Zod Dependency
 
-**Decision**: Add `zod` as a production dependency.
+**Decision**: Add `zod` as a production dependency for tool `inputSchema` definitions.
 
-**Rationale**: Vercel AI SDK tool schemas require Zod schema objects. Zod is the standard
-validation library in the Next.js/TypeScript ecosystem and has no conflicting peer deps
-with the current stack.
+**Rationale**: Vercel AI SDK tool schemas require Zod schema objects. Standard in the
+Next.js/TypeScript ecosystem with no conflicting peer deps.
 
 **Alternatives considered**:
-- `@ai-sdk/zod` re-export: Not a real package; `zod` must be added directly.
-- `valibot`: Also supported by AI SDK but would deviate from project conventions — rejected.
+- `valibot`: Also supported by AI SDK but deviates from project conventions — rejected.
 
 ---
 
 ## Decision 7: System Prompt Construction
 
 **Decision**: A `buildSystemPrompt()` function in `src/lib/system-prompt.ts` serialises
-`RESUME_DATA` to a structured text block and combines it with behavioural guardrails.
+`RESUME_DATA` into structured text with behavioural guardrails and mandatory tool-usage rules.
 
-**Rationale**: Building the prompt at request time from a live import of `resume.ts`
-ensures the SSoT principle (Constitution §VI) is enforced mechanically. The prompt
-includes: identity framing, factual data block, language detection instruction, topic
-restrictions, and tool usage guidance. This is a pure function with no side effects —
-easy to test and update.
+**Rationale**: Built at request time from a live import of `resume.ts`, enforcing the SSoT
+principle mechanically. The prompt includes: identity framing, factual data block, language
+detection instruction, topic restrictions, fabrication prevention, and **mandatory tool
+invocation rules** specifying exactly when each of the four tools must be called.
 
 ---
 
 ## Decision 8: Package Changes
 
-**Packages to remove**:
+**Packages removed**:
 - `@google/genai` — superseded by `@ai-sdk/google`
 
-**Packages to add**:
-- `ai` — Vercel AI SDK core
-- `@ai-sdk/google` — Google Gemini provider for AI SDK
-- `zod` — Tool schema validation (required by AI SDK)
+**Packages added**:
+- `ai` — Vercel AI SDK core (v6+)
+- `@ai-sdk/google` — Google Gemini provider
+- `@ai-sdk/react` — `useChat` hook
+- `zod` — Tool schema validation
