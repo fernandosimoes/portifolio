@@ -25,9 +25,11 @@ export const TerminalHeader = ({ onCommand }: TerminalHeaderProps) => {
         <button onClick={() => onCommand("/skills")} className="px-3 h-8 bg-stone-900 hover:bg-stone-800 border border-stone-800 text-xs font-bold text-stone-300 transition-colors uppercase tracking-wider cursor-pointer focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-none">
           Stack
         </button>
-        <button onClick={() => onCommand("/chat")} className="px-3 h-8 bg-stone-900 hover:bg-stone-800 border border-emerald-900 text-xs font-bold text-emerald-400 transition-colors uppercase tracking-wider cursor-pointer focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-none">
-          AI Chat
-        </button>
+        {process.env.NEXT_PUBLIC_CHAT_ENABLED === "true" && (
+          <button onClick={() => onCommand("/chat")} className="px-3 h-8 bg-stone-900 hover:bg-stone-800 border border-emerald-900 text-xs font-bold text-emerald-400 transition-colors uppercase tracking-wider cursor-pointer focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-none">
+            AI Chat
+          </button>
+        )}
       </div>
     </header>
   );
