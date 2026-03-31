@@ -57,7 +57,9 @@ export const HelpCommand = ({ onCommand }: { onCommand: (cmd: string) => void })
         <div><ClickableCmd cmdText="/projects" onCommand={onCommand} /> - Shipped Codebases</div>
         <div><ClickableCmd cmdText="/jobs" onCommand={onCommand} /> - Career History</div>
         <div><ClickableCmd cmdText="/skills" onCommand={onCommand} /> - Tech Stack</div>
-        <div><ClickableCmd cmdText="/chat" onCommand={onCommand} /> - AI Assistant</div>
+        {process.env.NEXT_PUBLIC_CHAT_ENABLED === "true" && (
+          <div><ClickableCmd cmdText="/chat" onCommand={onCommand} /> - AI Assistant</div>
+        )}
         <div><ClickableCmd cmdText="/clear" onCommand={onCommand} /> - Clear Terminal</div>
       </div>
     </div>

@@ -111,6 +111,9 @@ export default function Portfolio() {
       case "/skills":
         return <SkillsCommand />;
       case "/chat":
+        if (process.env.NEXT_PUBLIC_CHAT_ENABLED !== "true") {
+          return <NotFoundCommand cmd={trimmedCmd} onCommand={handleCommand} />;
+        }
         return <ChatInterface />;
       default:
         return (
