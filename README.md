@@ -1,7 +1,5 @@
 # FERNANDO_SIMOES.exe
 
-![Portfolio Preview](./public/preview.png) *(Note: Add a preview image in public/preview.png)*
-
 A unified, terminal-inspired professional portfolio built with Next.js and Tailwind CSS. The interface is specifically designed to provide a rich CLI experience for developers (`tech` users) while maintaining clear UI elements like accessible top navigation and inline-expanding accordions for `non-tech` users.
 
 ## 🚀 Features
